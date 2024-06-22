@@ -1,0 +1,5 @@
+kubectl port-forward service/my-nginx 3080:80
+
+kubectl port-forward --namespace=ingress-nginx service/ingress-nginx-controller 3080:80
+
+kubectl logs -n ingress-nginx ingress-nginx-controller-5d974c544-9t4xd

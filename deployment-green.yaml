@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-green-configmap
+data:
+  index.html: |
+    <html>
+      <body>
+        <h1>Welcome to My Website in Green!</h1>
+      </body>
+    </html>
+  bluegreen.conf: |
+    server {
+      listen       80;
+      server_name  bluegreen.localdev.me;
+
+      location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+      }
+
+      error_page   500 502 503 504  /50x.html;
+      location = /50x.html {
+        root   /usr/share/nginx/html;
+      }
+    }
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx-green
+    version: green
+  name: nginx-green
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-green
+      version: green
+  template:
+    metadata:
+      labels:
+        app: nginx-green
+        version: green
+    spec:
+      containers:
+      - image: nginx:1.11 # Edit this for your reponame
+        #imagePullPolicy: Never
+        env:
+        - name: NGINX_HOST
+          value: bluegreen.localdev.me
+        resources:
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 50m
+            memory: 50Mi
+        name: nginx-green
+        #restartPolicy: Never
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: html-volume
+          mountPath: /usr/share/nginx/html
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+      volumes:
+      - name: html-volume
+        # Use either ConfigMap or PersistentVolume
+        configMap:
+          name: nginx-green-configmap
+          items:
+          - key: index.html
+            path: index.html
+            # persistentVolumeClaim:
+            #   claimName: html-pvc
+      - name: nginx-config
+        configMap:
+          name: nginx-green-configmap
+          items:
+          - key: bluegreen.conf
+            path: default.conf
+

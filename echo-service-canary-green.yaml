@@ -1,0 +1,64 @@
+# https://kubernetes.github.io/ingress-nginx/examples/canary/
+
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo-canary-green
+  labels:
+    app: echo-canary-green
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echo-canary-green
+  template:
+    metadata:
+      labels:
+        app: echo-canary-green
+    spec:
+      containers:
+      - name: echo-canary-green
+        image: registry.k8s.io/ingress-nginx/e2e-test-echo@sha256:6fc5aa2994c86575975bb20a5203651207029a0d28e3f491d8a127d08baadab4
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 50m
+            memory: 50Mi
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-canary-green
+  labels:
+    app: echo-canary-green
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: echo-canary-green

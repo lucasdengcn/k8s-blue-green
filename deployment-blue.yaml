@@ -1,0 +1,90 @@
+##
+## https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/
+## 
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-blue-configmap
+data:
+  index.html: |
+    <html>
+      <body>
+        <h1>Welcome to My Website in Blue!</h1>
+      </body>
+    </html>
+  bluegreen.conf: |
+    server {
+      listen       80;
+      server_name  bluegreen.localdev.me;
+
+      location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+      }
+
+      error_page   500 502 503 504  /50x.html;
+      location = /50x.html {
+        root   /usr/share/nginx/html;
+      }
+    }
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx-blue
+    version: blue
+  name: nginx-blue
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-blue
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: nginx-blue
+        version: blue
+    spec:
+      containers:
+      - image: nginx:1.10 # Edit this for your reponame
+        #imagePullPolicy: Never
+        env:
+        - name: NGINX_HOST
+          value: bluegreen.localdev.me
+        resources:
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 50m
+            memory: 50Mi
+        name: nginx-blue
+        #restartPolicy: Never
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: html-volume
+          mountPath: /usr/share/nginx/html
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+      volumes:
+      - name: html-volume
+        # Use either ConfigMap or PersistentVolume
+        configMap:
+          name: nginx-blue-configmap
+          items:
+          - key: index.html
+            path: index.html
+            # persistentVolumeClaim:
+            #   claimName: html-pvc
+      - name: nginx-config
+        configMap:
+          name: nginx-blue-configmap
+          items:
+          - key: bluegreen.conf
+            path: default.conf
